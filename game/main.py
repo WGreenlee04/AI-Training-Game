@@ -8,8 +8,8 @@ def main():
 	# initialize pygame
 	pygame.init()
 	# load logo
-	logo_path = Path("resources/sprites/logo320x320.png")
-	logo = pygame.image.load(str(logo_path))  # logo has the type 'surface' which is like an image
+	# logo has the type 'surface' which is like an Image in any other language
+	logo = pygame.image.load(str(Path("resources/sprites/logo320x320.png")))
 	# congfigure display window
 	pygame.display.set_icon(logo)
 	pygame.display.set_caption("ShooterGame")
