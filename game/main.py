@@ -27,8 +27,3 @@ def main():
 				running = False
 
 	pygame.quit()
-
-
-# if this is the main process
-if __name__ == '__main__':
-	main()
