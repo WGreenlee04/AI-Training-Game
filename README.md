@@ -9,6 +9,6 @@ The goal of this project is to create a working ai that can play fighting games,
 as well as teach others how Neural Networks function.
 
 LIBRARY REFERENCES:
-Pygame
-Pyglet
+Pygame,
+Pyglet,
 TensorFlow
