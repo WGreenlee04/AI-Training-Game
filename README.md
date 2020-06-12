@@ -7,3 +7,8 @@ The second, named 'ai' contains the neural network logic which powers the ai in 
 
 The goal of this project is to create a working ai that can play fighting games,
 as well as teach others how Neural Networks function.
+
+LIBRARY REFERENCES:
+Pygame,
+Pyglet,
+TensorFlow
