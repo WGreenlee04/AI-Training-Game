@@ -16,7 +16,7 @@ A TensorFlow based model that trains based on a single user's inputs. The model 
 
 ## Installation
 
-Download the zip from this page, or use the Git implemenmtation of your choice to open a branch.
+Download the zip from this page, or use the Git implementation of your choice to open a branch.
 
 Download link for the full product in the future.
 
