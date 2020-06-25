@@ -81,29 +81,29 @@ def game(window: Window, level: Level = None):
 	key_handler: {bool} = KeyStateHandler()
 	window.push_handlers(key_handler)
 	if level is None:
+		level = Level()
 		bg_music: media.Source = resource.media('Fluffing a Duck.wav')
 	else:
 		bg_music: media.Source = level.music
-	main_batch: Batch = Batch()
-	players: [Player] = []  # parallel with health_labels[]
-	health_labels: [Label] = []  # parallel with players[]
+	overlay_batch: Batch = Batch()
+	health_labels: [Label] = []  # parallel with players[] in level
 
 	# -------------- SETUP -------------- #
 
 	# creating player(s)
-	players.append(Player(img=resource.image('p_red.png'), x=Player.size_x() // 2, batch=main_batch))
-	players.append(Player(img=resource.image('p_blue.png'), x=window.width - Player.size_x() // 2, batch=main_batch))
+	level.add(Player(img=resource.image('p_red.png'), x=Player.standard_width() // 2))
+	level.add(Player(img=resource.image('p_blue.png'), x=window.width - Player.standard_width() // 2))
 
 	# loading of all health text to display onscreen
-	for i in range(len(players)):
-		temp_label = Label('N/A', font_name='Calibri', font_size=24, bold=True, anchor_y='top', batch=main_batch)
+	for i in range(len(level.players)):
+		temp_label = Label('N/A', font_name='Calibri', font_size=24, bold=True, anchor_y='top', batch=overlay_batch)
 		if i % 2 is 0:
 			temp_label.y = window.height - (temp_label.content_height * (i // 2))
 		else:
 			temp_label.anchor_x = 'right'
 			temp_label.x = window.width
 			temp_label.y = window.height - (temp_label.content_height * (i // 2))
-		temp_label.text = str(players[i].starting_health)
+		temp_label.text = str(level.players[i].starting_health)
 		health_labels.append(temp_label)
 		del temp_label
 
@@ -119,9 +119,8 @@ def game(window: Window, level: Level = None):
 		Called every render.
 		"""
 		window.clear()
-		if level is not None:
-			level.draw()
-		main_batch.draw()
+		level.draw()
+		overlay_batch.draw()
 
 	@window.event
 	def on_activate():
@@ -149,14 +148,14 @@ def game(window: Window, level: Level = None):
 
 		handle_keys()
 
-		for p, l in zip(players, health_labels):
+		for p, l in zip(level.players, health_labels):
 			p.do_update(dt)
-			if p.y < -p.height // 2:
-				p.y = window.height + p.height // 2
-			if p.x < -p.width // 2:
-				p.x = window.width + p.width // 2
-			elif p.x > window.width + p.width // 2:
-				p.x = -p.width // 2
+			if p.y < Player.min_y():
+				p.y = Player.max_y()
+			if p.x < Player.min_x():
+				p.x = Player.max_x()
+			elif p.x > Player.max_x():
+				p.x = Player.min_x()
 				if not p.health_processed:
 					l.text = str(p.health)
 					color_scalar = p.starting_health / p.health
@@ -170,12 +169,15 @@ def game(window: Window, level: Level = None):
 		"""
 		# TODO: Make all control calls correspond to functions
 
-		for k in range(len(players)):
+		if key_handler["ESCAPE"]:
+			Settings.global_main_window.close()
+
+		for k in range(len(level.players)):
 			if key_handler[Settings.settings[f"move_right_{k + 1}"]]:
 				print(f"players[{k}] moved right!")
-				players[k].move("right")
+				level.players[k].move("right")
 			if key_handler[Settings.settings[f"move_left_{k + 1}"]]:
-				players[k].move("left")
+				level.players[k].move("left")
 
 	window.set_visible(True)  # make the window visible
 	clock.schedule(on_update)  # calls the update function every clock tick

@@ -125,8 +125,15 @@ class Player(PhysicalObject):
 	_base_armor: int = 10  # this is the % dmg blocked
 	_base_speed: int = 216  # measured in pixels/second
 
-	size_x: LambdaWrapper = LambdaWrapper(lambda: 80 / 1920 * int(Settings.settings["window_resolution"].split("x")[0]))
-	size_y: LambdaWrapper = LambdaWrapper(lambda: 80 / 1080 * int(Settings.settings["window_resolution"].split("x")[1]))
+	standard_width: LambdaWrapper = LambdaWrapper(
+		lambda: 80 / 1920 * int(Settings.settings["window_resolution"].split("x")[0]))
+	standard_height: LambdaWrapper = LambdaWrapper(
+		lambda: 80 / 1080 * int(Settings.settings["window_resolution"].split("x")[1]))
+
+	min_y: LambdaWrapper = LambdaWrapper(lambda: -Player.standard_height() // 2)
+	max_y: LambdaWrapper = LambdaWrapper(lambda: Settings.global_main_window.height + Player.standard_height() // 2)
+	min_x: LambdaWrapper = LambdaWrapper(lambda: -Player.standard_width() // 2)
+	max_x: LambdaWrapper = LambdaWrapper(lambda: Settings.global_main_window.width + Player.standard_width() // 2)
 
 	def __init__(self, health_mult: float = 1, armor_mult: float = 1, speed_mult: float = 1, img: TextureRegion = None,
 	             *args, **kwargs):
@@ -138,8 +145,8 @@ class Player(PhysicalObject):
 			:param speed_mult: Multiplier for speed.
 			:param img: Image or animation to display.
 		"""
-		img.width = self.size_x()
-		img.height = self.size_y()
+		img.width = self.standard_width()
+		img.height = self.standard_height()
 		img.anchor_x = img.width // 2
 		img.anchor_y = img.height // 2
 
@@ -188,25 +195,28 @@ class Level(object):
 	Container Class for a set of Level elements.
 	"""
 
-	def __init__(self, background: Sprite = None, collidables: [Collidable2D] = None,
-	             physical_objects: [PhysicalObject] = None, music: media.Source = None):
+	def __init__(self, background: Sprite = None, objects: [Collidable2D] = None, music: media.Source = None):
 		"""
 		Creates a new Level.
 		:param background: The Sprite that is rendered by default on the screen.
-		:param collidables: List of Collidables that are rendered over the background and calculated in collisions.
-		:param physical_objects: List of PhysicsObjects to be rendered a
+		:param objects: List of Collidables that are rendered over the background and calculated in collisions.
 		"""
-		self.background: Sprite = background
-		self.collidables: [Collidable2D] = collidables
-		self.physical_objects: [PhysicalObject] = physical_objects
+
+		self._background: Sprite = background
+		if objects is not None:
+			self._objects: [Collidable2D] = objects
+		else:
+			self._objects: [Collidable2D] = []
+		self.players: [Player] = []
 		self._batch: Batch = Batch()
 		self.music: media.Source = music
 
-		background.batch = self._batch
-		for collidable in self.collidables:
-			collidable.batch = self._batch
-		for physical_object in self.physical_objects:
-			physical_object.batch = self._batch
+		if background is not None:
+			background.batch = self._batch
+		for obj in self._objects:
+			obj.batch = self._batch
+			if isinstance(obj, Player):
+				self.players.append(obj)
 
 	def add(self, sprite: Sprite):
 		"""
@@ -216,11 +226,11 @@ class Level(object):
 		"""
 		sprite.batch = self._batch
 		if isinstance(sprite, Collidable2D):
-			self.collidables.append(sprite)
-		elif isinstance(sprite, PhysicalObject):
-			self.physical_objects.append(sprite)
+			self._objects.append(sprite)
+			if isinstance(sprite, Player):
+				self.players.append(sprite)
 		elif isinstance(sprite, Sprite):
-			self.background = sprite
+			self._background = sprite
 		else:
 			return NotImplemented
 
@@ -230,16 +240,21 @@ class Level(object):
 		:param sprite: The Sprite to be removed.
 		:return: NotImplemented if the type is not Supported
 		"""
-
+		sprite.batch = None
 		if isinstance(sprite, Collidable2D):
-			self.collidables.remove(sprite)
-		elif isinstance(sprite, PhysicalObject):
-			self.physical_objects.remove(sprite)
+			self._objects.remove(sprite)
+			if isinstance(sprite, Player):
+				self.players.remove(sprite)
 		elif isinstance(sprite, Sprite):
-			if self.background is sprite:
-				self.background = None
+			if sprite is self._background:
+				self._background = None
 		else:
 			return NotImplemented
 
 	def draw(self):
 		self._batch.draw()
+
+	def update(self):
+		for obj in self._objects:
+			if isinstance(obj, PhysicalObject):
+				obj.update()

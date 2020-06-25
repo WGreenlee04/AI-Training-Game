@@ -321,11 +321,11 @@ class Rectangle(Dimension):
 	as well as the top left and bottom right coordinate of that
 	same rectangle.
 	"""
-	Point = namedtuple('Point', ['x', 'y'])
-	Coordinates = namedtuple('Coordinates', ['tl', 'br'])
+	Point: namedtuple = namedtuple('Point', ['x', 'y'])
+	Coordinates: namedtuple = namedtuple('Coordinates', ['tl', 'br'])
 
 	@property
-	def bounds(self):
+	def bounds(self) -> Dimension:
 		"""
 		The dimensions of the rectangle.
 			:return: The Dimension of the bounds of the rectangle.
@@ -333,7 +333,7 @@ class Rectangle(Dimension):
 		return Dimension(self.width, self.height)
 
 	@property
-	def coordinates(self):
+	def coordinates(self) -> Coordinates:
 		"""
 		The top left and bottom right coordinates of the rectangle.
 			:return: Coordinates of the rectangle as namedtuple(tl, br)
