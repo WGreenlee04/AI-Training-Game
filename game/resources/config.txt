@@ -1,0 +1,17 @@
+move_right_1 = D
+move_left_1 = A
+jump_1 = W
+fast_fall_1 = S
+fire_right_1 = E
+fire_left_1 = Q
+dodge_1 = LSHIFT
+move_right_2 = NUM_6
+move_left_2 = NUM_4
+jump_2 = NUM_8
+fast_fall_2 = NUM_5
+fire_right_2 = NUM_9
+fire_left_2 = NUM_7
+dodge_2 = RSHIFT
+window_resolution = 1920x1080
+window_style = Fullscreen
+vsync = On
