@@ -5,9 +5,8 @@ from pathlib import Path
 
 from pyglet import resource
 from pyglet.window import Window
-from screeninfo import get_monitors
 
-from game.physics_tools import Dimension, Vector2D
+from game.physics_tools import Vector2D, LambdaWrapper
 
 
 class Settings:
@@ -17,13 +16,13 @@ class Settings:
 	"""
 
 	# "GLOBAL" VARIABLES/REFERENCES #
-	global_display_dim = Dimension(get_monitors()[0].width, get_monitors()[0].height)
 	global_resource_path: Path = Path('resources').absolute()  # Name of settings load/save file
 	global_resource_sub_folders: [str] = [x[0] for x in walk(str(global_resource_path))]
 	global_main_window: Window = None  # Window for the game to render on
 
 	# CONSTANTS #
-	constant_g: Vector2D = Vector2D(0, -80 / 1080 * 9.8 * global_display_dim.height)  # measured in pixels/second/second
+	constant_g: LambdaWrapper = LambdaWrapper(lambda: Vector2D(0, -80 / 1080 * 2 * float(
+		Settings.settings['window_resolution'].split('x')[1])))  # measured in pixels/second/second
 
 	# SETTINGS VARS #
 	file_path: str = str(Path('resources/config.txt').absolute())
@@ -56,7 +55,7 @@ class Settings:
 	@staticmethod
 	def load():
 		"""
-		Loads the settings from the file into the Settings.settings dict
+		Loads the settings from the file into the Settings.settings dict.
 		"""
 		settings = {}
 		with open(Settings.file_path, mode='r') as config_r:

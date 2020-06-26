@@ -1,13 +1,12 @@
 import pyglet
 from pyglet import clock
-from pyglet import media
 from pyglet import resource
 from pyglet.graphics import Batch
 from pyglet.text import Label
 from pyglet.window import Window
 from pyglet.window import key
 
-from game.level import Level, Player
+from game.level import Level, Player, BlockPlace
 from game.settings import Settings
 
 
@@ -50,8 +49,6 @@ def main():
 		:return: Exits the game
 	"""
 
-	# TODO: Create level here
-
 	Settings.set_default()
 	Settings.save()
 	Settings.load()
@@ -65,7 +62,7 @@ def main():
 	                                     visible=False)
 	Settings.global_main_window.set_icon(resource.image('logo.png'))  # further window config
 
-	game(window=Settings.global_main_window)
+	game(window=Settings.global_main_window, level=BlockPlace())
 
 
 def game(window: Window, level: Level = None):
@@ -78,23 +75,24 @@ def game(window: Window, level: Level = None):
 	"""
 
 	# GAME INSTANCE VARS
-	key_handler: {bool} = KeyStateHandler()
-	window.push_handlers(key_handler)
+	key_handler: {bool} = KeyStateHandler()  # instantiate key handler
+	window.push_handlers(key_handler)  # setup key handler with the window
 	if level is None:
 		level = Level()
-		bg_music: media.Source = resource.media('Fluffing a Duck.wav')
-	else:
-		bg_music: media.Source = level.music
-	overlay_batch: Batch = Batch()
-	health_labels: [Label] = []  # parallel with players[] in level
+	bg_music = level.music
+	overlay_batch: Batch = Batch()  # batch for overlay elements
+	other_labels: [Label] = [
+		Label(level.name, font_name="Helvecta", font_size=35, bold=True, anchor_y='top', anchor_x='center',
+		      x=window.width / 2, y=window.height, batch=overlay_batch, )]
 
 	# -------------- SETUP -------------- #
 
 	# creating player(s)
-	level.add(Player(img=resource.image('p_red.png'), x=Player.standard_width() // 2))
-	level.add(Player(img=resource.image('p_blue.png'), x=window.width - Player.standard_width() // 2))
+	for num in range(2):
+		level.add(
+			Player(img=resource.image(f'p_{num + 1}.png'), x=level.spawn_points[num].x, y=level.spawn_points[num].y))
 
-	# loading of all health text to display onscreen
+	# loading of all health text for players
 	for i in range(len(level.players)):
 		temp_label = Label('N/A', font_name='Calibri', font_size=24, bold=True, anchor_y='top', batch=overlay_batch)
 		if i % 2 is 0:
@@ -104,11 +102,11 @@ def game(window: Window, level: Level = None):
 			temp_label.x = window.width
 			temp_label.y = window.height - (temp_label.content_height * (i // 2))
 		temp_label.text = str(level.players[i].starting_health)
-		health_labels.append(temp_label)
-		del temp_label
+		level.players[i].health_label = temp_label
 
 	# play music
-	bg_music.play()
+	if bg_music is not None:
+		bg_music.play()
 
 	# ----------------------------------- #
 
@@ -136,7 +134,6 @@ def game(window: Window, level: Level = None):
 		Performs exit actions for the game.
 		Called when user closes window.
 		"""
-		# TODO: Add all exit procedures
 		Settings.save()
 
 	def on_update(dt):
@@ -148,19 +145,14 @@ def game(window: Window, level: Level = None):
 
 		handle_keys()
 
-		for p, l in zip(level.players, health_labels):
-			p.do_update(dt)
-			if p.y < Player.min_y():
-				p.y = Player.max_y()
-			if p.x < Player.min_x():
-				p.x = Player.max_x()
-			elif p.x > Player.max_x():
-				p.x = Player.min_x()
-				if not p.health_processed:
-					l.text = str(p.health)
-					color_scalar = p.starting_health / p.health
-					l.color = (255, int(255 * color_scalar), int(255 * color_scalar), 255)
-					p.health_processed = True
+		level.update(dt)
+		for p in level.players:
+			p.check_bounds()
+			if not p.health_processed:
+				p.health_label.text = str(p.health)
+				color_scalar = p.starting_health / p.health
+				p.health_label.color = (255, int(255 * color_scalar), int(255 * color_scalar), 255)
+				p.health_processed = True
 
 	def handle_keys():
 		"""
@@ -174,13 +166,12 @@ def game(window: Window, level: Level = None):
 
 		for k in range(len(level.players)):
 			if key_handler[Settings.settings[f"move_right_{k + 1}"]]:
-				print(f"players[{k}] moved right!")
 				level.players[k].move("right")
 			if key_handler[Settings.settings[f"move_left_{k + 1}"]]:
 				level.players[k].move("left")
 
 	window.set_visible(True)  # make the window visible
-	clock.schedule(on_update)  # calls the update function every clock tick
+	clock.schedule_interval(on_update, 1 / 144)
 	pyglet.app.run()  # inits pyglet and OpenGL
 
 

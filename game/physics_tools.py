@@ -17,6 +17,8 @@ class Vector2D(object):
 	Class that acts as a mathematical 2D vector for physics calculations.
 	"""
 
+	Point: namedtuple = namedtuple('Point', ['x', 'y'])
+
 	def __init__(self, x=0, y=0):
 		self.x = 0
 		self.y = 0
@@ -321,7 +323,6 @@ class Rectangle(Dimension):
 	as well as the top left and bottom right coordinate of that
 	same rectangle.
 	"""
-	Point: namedtuple = namedtuple('Point', ['x', 'y'])
 	Coordinates: namedtuple = namedtuple('Coordinates', ['tl', 'br'])
 
 	@property
@@ -336,17 +337,17 @@ class Rectangle(Dimension):
 	def coordinates(self) -> Coordinates:
 		"""
 		The top left and bottom right coordinates of the rectangle.
-			:return: Coordinates of the rectangle as namedtuple(tl, br)
+			:return: Coordinates of the rectangle as namedtuple(tl, br).
 		"""
 		half_width = self.width // 2
 		half_height = self.height // 2
-		return self.Coordinates(self.Point(-half_width, half_height), self.Point(half_width, -half_height))
+		return self.Coordinates(Vector2D.Point(-half_width, half_height), Vector2D.Point(half_width, -half_height))
 
 	@bounds.setter
 	def bounds(self, bounds: Dimension):
 		"""
 		Sets the width and height of the rectangle through a dimension.
-			:param bounds: The dimension to be followed
+			:param bounds: The dimension to be followed.
 		"""
 		self.width = bounds.width
 		self.height = bounds.height
@@ -355,7 +356,7 @@ class Rectangle(Dimension):
 	def coordinates(self, coordinates: Coordinates):
 		"""
 		Sets the coordinates of the top left and bottom right of the rectangle.
-			:param coordinates: Coordinates in the form Coordinates(tl: Point(x,y), br: Point(x,y))
+			:param coordinates: Coordinates in the form Coordinates(tl: Point(x,y), br: Point(x,y)).
 		"""
 		self.width = abs(coordinates[0][0]) + abs(coordinates[1][0])
 		self.height = abs(coordinates[0][1]) + abs(coordinates[1][1])

@@ -1,42 +1,53 @@
 from __future__ import annotations
 
-from pyglet import media
+from pyglet import media, resource
 from pyglet.graphics import Batch
 from pyglet.image import TextureRegion
 from pyglet.sprite import Sprite
+from pyglet.text import Label
 
 from game.physics_tools import Dimension, Rectangle, Vector2D, LambdaWrapper
 from game.settings import Settings
 
 
+# TODO: Make collision based on https://www.metanetsoftware.com/technique/tutorialA.html#section0
 class Collidable2D(Sprite):
 	"""
 	Game element that has the ability to detect collision with others of its type.
 	"""
 
 	def __init__(self, hitbox_type: str = 'image', hitbox_dimension: Dimension = None,
-	             img: TextureRegion = None, *args, **kwargs):
+	             img: TextureRegion = None, scaled: bool = True, *args, **kwargs):
 		"""
-		Creates a new Collidable2D object.
-			:param hitbox_type: The type of hitbox to process:
+		:param hitbox_type: The type of hitbox to process:
 
-				Can be one of a few types:
+			Can be one of a few types:
 
-				'circle' - Not yet implemented
+			'circle' - Not yet implemented.
 
-				'rectangle' - Made of a width and height
+			'rectangle' - Made of a width and height
 				passed into the dimensions(width, height) argument.
 
-				'image' - Made of the width and height of an image
+			'image' - Made of the width and height of an image
 				passed into the img argument.
 
-				None or 'None' - No hitbox will be generated.
-			:param hitbox_dimension: A tuple containing the (width, height) of the hitbox rectangle
+			None or 'None' - No hitbox will be generated.
+
+		:param hitbox_dimension: A tuple containing the (width, height) of the hitbox rectangle.
 			This is only used when the hitbox_type is 'rectangle'.
-			:param img: Image or animation to display.
+		:param img: Image or animation to display.
 		"""
 
+		# Set anchoring
+		img.anchor_x = img.width / 2
+		img.anchor_y = img.height / 2
+
 		super(Collidable2D, self).__init__(img=img, *args, **kwargs)
+
+		# Scale the object to screen size
+		if scaled:
+			self.scale = 1920 / Settings.global_main_window.width
+
 		self.hitbox_type: str = hitbox_type
 
 		if hitbox_type in [None, 'None']:
@@ -68,10 +79,10 @@ class Collidable2D(Sprite):
 		r2 = other.hitbox.coordinates.br
 
 		if self.hitbox_type and other.hitbox_type is not None:
-			l1 = Rectangle.Point(l1.x + x, l1.y + y)
-			r1 = Rectangle.Point(r1.x + x, r1.y + y)
-			l2 = Rectangle.Point(l2.x + ox, l1.y + oy)
-			r2 = Rectangle.Point(r2.x + ox, r1.y + oy)
+			l1 = Vector2D.Point(l1.x + x, l1.y + y)
+			r1 = Vector2D.Point(r1.x + x, r1.y + y)
+			l2 = Vector2D.Point(l2.x + ox, l1.y + oy)
+			r2 = Vector2D.Point(r2.x + ox, r1.y + oy)
 
 		# if they are left or right of each other
 		if l1.x >= r2.x or l2.x >= r1.x:
@@ -90,23 +101,21 @@ class PhysicalObject(Collidable2D):
 	"""
 	_base_mass: float = 1  # measured in standard masses
 
-	def __init__(self, does_update=True, mass_mult=1, img: TextureRegion = None, *args, **kwargs):
+	def __init__(self, does_update=True, mass_mult=1, *args, **kwargs):
 		"""
-		Creates a new PhysicalObject object.
 		:param does_update: If the physics update is run on this object.
 		:param mass_mult: Multiplier for the mass of the object.
 		:param img: Image or animation to display.
 		"""
-		super(PhysicalObject, self).__init__(img=img, *args, **kwargs)
+		super(PhysicalObject, self).__init__(*args, **kwargs)
 
 		self.does_update: bool = does_update
 		self.mass: float = self._base_mass * mass_mult
 		self.dx: Vector2D = Vector2D()  # velocity
 
-	# TODO: write this better.
 	def do_update(self, dt):
 		if self.does_update:
-			self.dx += Settings.constant_g * dt
+			self.dx += Settings.constant_g() * dt
 			self.x += self.dx.x * dt
 			self.y += self.dx.y * dt
 
@@ -123,12 +132,12 @@ class Player(PhysicalObject):
 	# Player Class Attributes
 	_base_health: int = 100
 	_base_armor: int = 10  # this is the % dmg blocked
-	_base_speed: int = 216  # measured in pixels/second
+	_base_speed: int = 300  # measured in pixels/second
 
 	standard_width: LambdaWrapper = LambdaWrapper(
-		lambda: 80 / 1920 * int(Settings.settings["window_resolution"].split("x")[0]))
+		lambda: 80 / 1920 * int(Settings.settings['window_resolution'].split('x')[0]))
 	standard_height: LambdaWrapper = LambdaWrapper(
-		lambda: 80 / 1080 * int(Settings.settings["window_resolution"].split("x")[1]))
+		lambda: 80 / 1080 * int(Settings.settings['window_resolution'].split('x')[1]))
 
 	min_y: LambdaWrapper = LambdaWrapper(lambda: -Player.standard_height() // 2)
 	max_y: LambdaWrapper = LambdaWrapper(lambda: Settings.global_main_window.height + Player.standard_height() // 2)
@@ -138,8 +147,6 @@ class Player(PhysicalObject):
 	def __init__(self, health_mult: float = 1, armor_mult: float = 1, speed_mult: float = 1, img: TextureRegion = None,
 	             *args, **kwargs):
 		"""
-		Creates a new Player object.
-
 			:param health_mult: Multiplier for health.
 			:param armor_mult: Multiplier for armor.
 			:param speed_mult: Multiplier for speed.
@@ -147,15 +154,14 @@ class Player(PhysicalObject):
 		"""
 		img.width = self.standard_width()
 		img.height = self.standard_height()
-		img.anchor_x = img.width // 2
-		img.anchor_y = img.height // 2
 
-		super(Player, self).__init__(img=img, *args, **kwargs)
+		super(Player, self).__init__(img=img, scaled=False, *args, **kwargs)
 
 		self.starting_health: int = int(self._base_health * health_mult)
 		self._health: int = self.starting_health
 		self.armor: int = int(self._base_armor * armor_mult)
 		self.speed: int = int(self._base_speed * speed_mult)
+		self.health_label: Label = Label()
 		self.health_processed: bool = True
 
 	@property
@@ -173,7 +179,6 @@ class Player(PhysicalObject):
 		self._health += int(health)
 		self.health_processed = True
 
-	# TODO: set this to flag something in self.(update) instead
 	def move(self, arg: str):
 		"""
 		Built in method to calculate movement of a Player.
@@ -181,13 +186,19 @@ class Player(PhysicalObject):
 		:return:
 		"""
 		if arg.lower() == 'left':
-			if abs(self.dx.x) < self.speed:
-				# increase velocity
-				pass
+			if self.dx.x > -self.speed:
+				self.apply_force(Vector2D(-self.speed, 0))
 		if arg.lower() == 'right':
-			if abs(self.dx.x) < self.speed:
-				# increase velocity
-				pass
+			if self.dx.x < self.speed:
+				self.apply_force(Vector2D(self.speed, 0))
+
+	def check_bounds(self):
+		if self.y < Player.min_y():
+			self.y = Player.max_y()
+		if self.x < Player.min_x():
+			self.x = Player.max_x()
+		elif self.x > Player.max_x():
+			self.x = Player.min_x()
 
 
 class Level(object):
@@ -195,11 +206,14 @@ class Level(object):
 	Container Class for a set of Level elements.
 	"""
 
-	def __init__(self, background: Sprite = None, objects: [Collidable2D] = None, music: media.Source = None):
+	def __init__(self, background: Sprite = None, objects: [Collidable2D] = None, music: media.Source = None,
+	             name: str = 'None', spawn_points: [Vector2D.Point] = None):
 		"""
-		Creates a new Level.
-		:param background: The Sprite that is rendered by default on the screen.
-		:param objects: List of Collidables that are rendered over the background and calculated in collisions.
+		:param background: The background Sprite.
+		:param objects: All objects in the level.
+		:param music: Sounds to be played in the background while game is running.
+		:param name: Name to be displayed for the level
+		:param spawn_points: Places for players to spawn into the level
 		"""
 
 		self._background: Sprite = background
@@ -207,10 +221,19 @@ class Level(object):
 			self._objects: [Collidable2D] = objects
 		else:
 			self._objects: [Collidable2D] = []
-		self.players: [Player] = []
-		self._batch: Batch = Batch()
-		self.music: media.Source = music
+		self.players: [Player] = []  # all players in the level
+		self._batch: Batch = Batch()  # graphics batch
+		self.music: media.Source = music  # music to be played in background
+		self.name = name  # name of the level
+		if spawn_points is not None:
+			self.spawn_points = spawn_points
+			self.max_players = len(spawn_points)
+		else:
+			self.spawn_points = [Vector2D.Point(Settings.global_main_window.width // 5, 100),
+			                     Vector2D.Point(Settings.global_main_window.width * 4 // 5)]
+			self.max_players = 2
 
+		# BATCH SETUP #
 		if background is not None:
 			background.batch = self._batch
 		for obj in self._objects:
@@ -254,7 +277,30 @@ class Level(object):
 	def draw(self):
 		self._batch.draw()
 
-	def update(self):
+	def update(self, dt):
 		for obj in self._objects:
 			if isinstance(obj, PhysicalObject):
-				obj.update()
+				for col_obj in self._objects:
+					if not obj.is_colliding(col_obj):
+						obj.do_update(dt)
+
+
+class BlockPlace(Level):
+
+	def __init__(self):
+		main_platforms: [Collidable2D] = [Collidable2D(hitbox_type='image', img=resource.image('default_platform.png'),
+		                                               x=Settings.global_main_window.width // 2,
+		                                               y=Settings.global_main_window.height // 3)]
+		spawn_points = []
+		for main_platform in main_platforms:
+			main_platform.anchor_x = main_platform.width / 2
+			main_platform.anchor_y = main_platform.height / 2
+			spawn_points.append(Vector2D.Point(
+				main_platform.x - (main_platform.width / 2 - Player.standard_width() / 2),
+				main_platform.y + main_platform.height / 2 + Player.standard_height() / 2))
+			spawn_points.append(
+				Vector2D.Point(main_platform.x + (main_platform.width / 2 - Player.standard_width() / 2),
+				               main_platform.y + main_platform.height / 2 + Player.standard_height() / 2))
+
+		super(BlockPlace, self).__init__(objects=main_platforms, name="Block Place",
+		                                 music=resource.media("Fluffing a Duck.wav"), spawn_points=spawn_points)
