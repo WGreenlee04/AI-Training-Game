@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pyglet
-from pyglet import clock
+from pyglet import clock, media
 from pyglet import resource
 from pyglet.graphics import Batch
 from pyglet.text import Label
@@ -10,6 +10,7 @@ from pyglet.window import key
 
 from game.level import Level, Player
 from game.settings import Settings
+from game.utility import Vector2D
 
 
 # NOTES:
@@ -18,22 +19,21 @@ from game.settings import Settings
 
 class KeyStateHandler(dict):
     """Simple handler that tracks the state of keys on the keyboard. If a
-	key is pressed then this handler holds a True value for it.
+    key is pressed then this handler holds a True value for it.
 
-	For example::
+    For example::
 
-		>>win = window.Window
-		>> keyboard = key.KeyStateHandler()
-		>> win.push_handlers(keyboard)
+        >>win = window.Window
+        >> keyboard = key.KeyStateHandler()
+        >> win.push_handlers(keyboard)
 
-		# Hold down the "up" arrow...
+        # Hold down the "up" arrow...
 
-		>> keyboard[key.UP]
-		True
-		>> keyboard[key.DOWN]
-		False
-
-	"""
+        >> keyboard[key.UP]
+        True
+        >> keyboard[key.DOWN]
+        False
+    """
 
     def on_key_press(self, symbol, modifiers):
         self[key.symbol_string(symbol)] = True
@@ -47,38 +47,40 @@ class KeyStateHandler(dict):
 
 def main():
     """
-	Main function
-		:return: Exits the game
-	"""
+    Main function
+        :return: Exits the game
+    """
 
     Settings.init()
-
     game(window=Settings.global_main_window)
 
 
 def game(window: Window, level: Level = None):
     """
-	Function to run the game in a given window with given parameters.
+    Function to run the game in a given window with given parameters.
 
-	key_handler is for compatibility purposes
-		:param window: The window for all graphics to be drawn on.
-		:param level: The game level
-	"""
+    key_handler is for compatibility purposes
+        :param window: The window for all graphics to be drawn on.
+        :param level: The game level
+    """
 
     # GAME INSTANCE VARS
-    overlay_batch: Batch = Batch()
-    key_handler: {bool} = KeyStateHandler()
-    window.push_handlers(key_handler)
+    overlay_batch: Batch = Batch()  # The graphics batch of the game instance
+    key_handler: {bool} = KeyStateHandler()  # The key listener equivalent for this game
+    window.push_handlers(key_handler)  # Tell it which window to listen to
     if level is None:
-        level: Level = Level()
-    bg_music = level.music
+        level: Level = Level()  # Default level
+    bg_music: media.Source = level.music  # Background music
+    other_labels: [Label] = [
+        Label(level.name, font_name='Helvecta', font_size=35, bold=True, anchor_y='top', anchor_x='center',
+              x=window.width / 2, y=window.height, batch=overlay_batch, )]
 
     # -------------- SETUP -------------- #
 
     # creating player(s)
-    for num in range(level.player_count):
-        level.players.append(Player(img=resource.image(f'p_{num + 1}'), x=level.spawn_points[num].x,
-                                    y=level.spawn_points[num].y, batch=overlay_batch))
+    for num in range(level.max_players):
+        level.add(
+            Player(img=resource.image(f'p_{num + 1}.png'), x=level.spawn_points[num].x, y=level.spawn_points[num].y))
 
     # loading of all health text to display onscreen
     for i in range(len(level.players)):
@@ -93,16 +95,17 @@ def game(window: Window, level: Level = None):
         level.players[i].health_label = temp_label
 
     # play music
-    bg_music.play()
+    if bg_music is not None:
+        bg_music.play()
 
     # ----------------------------------- #
 
     @window.event
     def on_draw():
         """
-		Draws all objects to the screen.
-		Called every render.
-		"""
+        Draws all objects to the screen.
+        Called every render.
+        """
         window.clear()
         level.draw()
         overlay_batch.draw()
@@ -118,36 +121,39 @@ def game(window: Window, level: Level = None):
     @window.event
     def on_close():
         """
-		Performs exit actions for the game.
-		Called when user closes window.
-		"""
+        Performs exit actions for the game.
+        Called when user closes window.
+        """
         Settings.save()
 
     def on_update(dt):
         """
-		Updates game with every "clock" tick.
+        Updates game with every "clock" tick.
 
-			:param dt: Differential time between clock ticks.
-		"""
+            :param dt: Differential time between clock ticks.
+        """
 
         handle_keys()
-        level.do_update()
+        level.do_update(dt=dt)
 
         for p in level.players:
             p.check_bounds()
 
     def handle_keys():
         """
-		Reads all key inputs from the key handler and
-		does the action corresponding with said key.
-		"""
+        Reads all key inputs from the key handler and
+        does the action corresponding with said key.
+        """
         # TODO: Make all control calls correspond to changes in player
 
         for k in range(len(level.players)):
-            if key_handler[Settings.settings[f"move_right_{k + 1}"]]:
-                pass
-            if key_handler[Settings.settings[f"move_left_{k + 1}"]]:
-                pass
+            controlled_player = level.players[k]
+            if key_handler[Settings.settings[f'move_right_{k + 1}']]:
+                if controlled_player.dx.x > -controlled_player.speed:
+                    controlled_player.apply_force(Vector2D(-controlled_player.speed, 0))
+            if key_handler[Settings.settings[f'move_left_{k + 1}']]:
+                if controlled_player.dx.x < controlled_player.speed:
+                    controlled_player.apply_force(Vector2D(controlled_player.speed, 0))
 
     window.set_visible(True)  # make the window visible
     clock.schedule(on_update)  # calls the update function every clock tick

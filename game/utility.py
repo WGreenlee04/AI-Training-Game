@@ -1,5 +1,7 @@
 # -*- coding: utf8 -*-
 
+from __future__ import annotations
+
 __author__ = "Sven Hecht"
 __license__ = "GPL"
 __version__ = "1.0.2"
@@ -7,9 +9,6 @@ __maintainer__ = "William Greenlee"
 __email__ = "greenlee04@gmail.com"
 __status__ = "Production"
 
-from __future__ import annotations
-
-from builtins import function
 from collections import namedtuple
 from math import *
 from random import *
@@ -285,10 +284,10 @@ class Vector2D(object):
             return self.y
 
     def __str__(self):
-        return f"[x: {self.x}, y: {self.y}]"
+        return f'[x: {self.x}, y: {self.y}]'
 
     def __repr__(self):
-        return f"{'x': {self.x}, 'y': {self.y}}"
+        return f'{"x": {self.x}, "y": {self.y}}'
 
     def __neg__(self):
         return Vector2D(-self.x, -self.y)
@@ -368,8 +367,8 @@ class LambdaWrapper(object):
     Makes Lambda items (callable vars) more efficient.
     """
 
-    def __init__(self, func: function):
-        self.func: function = func
+    def __init__(self, func: ()):
+        self.func: () = func
         self.value: any = None
 
     def __call__(self):

@@ -13,9 +13,9 @@ from game.utility import LambdaWrapper
 
 class Settings:
     """
-	Container Class for instance level settings and global variables.
-	Only one settings dictionary is able to be created in a game instance.
-	"""
+    Container Class for instance level settings and global variables.
+    Only one settings dictionary is able to be created in a game instance.
+    """
 
     # "GLOBAL" VARIABLES/REFERENCES #
     global_resource_path: Path = Path('resources').absolute()  # base path for all game resources
@@ -97,7 +97,7 @@ class Settings:
             setting_names = list(Settings.settings.keys())
             setting_values = list(Settings.settings.values())
             for n, v in zip(setting_names, setting_values):
-                config_w.write(f"{n} {Settings.file_split} {v}\n")
+                config_w.write(f'{n} {Settings.file_split} {v}\n')
 
     @staticmethod
     def save_new():
@@ -108,7 +108,7 @@ class Settings:
             setting_names = list(Settings.settings.keys())
             setting_values = list(Settings.settings.values())
             for n, v in zip(setting_names, setting_values):
-                config_w.write(f"{n} {Settings.file_split} {v}\n")
+                config_w.write(f'{n} {Settings.file_split} {v}\n')
 
     @staticmethod
     def set_default(names: [] = None):
@@ -126,11 +126,11 @@ class Settings:
     @staticmethod
     def pyglet_reindex(sub_folders_add: [str] = None, sub_folders_remove: [str] = None):
         """
-		Modifies the Pyglet resource path safely.
+        Modifies the Pyglet resource path safely.
 
-			:param sub_folders_add: list of folder names to add.
-			:param sub_folders_remove: list of folder names to remove.
-		"""
+            :param sub_folders_add: list of folder names to add.
+            :param sub_folders_remove: list of folder names to remove.
+        """
         if sub_folders_add is not None:
             for folder in sub_folders_add:
                 if folder not in resource.path:

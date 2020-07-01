@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from builtins import function
-
 from pyglet import media, resource
 from pyglet.graphics import Batch
 from pyglet.image import TextureRegion
@@ -18,7 +16,7 @@ class Collidable2D(Sprite):
     """
 
     def __init__(self, does_collide: bool = True, hitbox_type: str = 'image',
-                 img: TextureRegion = None,
+                 img: TextureRegion = None, scaled: bool = True,
                  hitbox_coordinates: [Vector2D] = None, hitbox_dimension: Dimension = None, *args, **kwargs):
         """
         Creates a new Collidable2D object.
@@ -26,10 +24,10 @@ class Collidable2D(Sprite):
 
                 Can be one of a few types:
 
-                'circle' - Not yet implemented
+                'circle' - Not yet implemented.
 
                 'abstract' - Made of a coordinate array
-                passed into the hitbox_coordinates argument
+                passed into the hitbox_coordinates argument.
 
                 'rectangle' - Made of a width and height
                 passed into the hitbox_dimensions(width, height) argument.
@@ -38,16 +36,25 @@ class Collidable2D(Sprite):
                 passed into the img argument.
 
                 None or 'None' - No hitbox will be generated.
+
             :param hitbox_dimension: A tuple containing the (width, height) of the hitbox rectangle
             This is only used when the hitbox_type is 'rectangle'.
             :param img: Image or animation to display.
         """
 
+        if scaled:
+            scale_factor = 1920 * int(Settings.settings['window_resolution'].split('x')[0])
+            img.width *= scale_factor
+            img.height *= scale_factor
+
+        img.anchor_x = img.width / 2
+        img.anchor_y = img.height / 2
+
         super(Collidable2D, self).__init__(img=img, *args, **kwargs)
         self._hitbox_type: str = hitbox_type
         self.does_collide: bool = does_collide
 
-        if hitbox_type is None or hitbox_type.lower() == "none":
+        if hitbox_type is None or hitbox_type.lower() == 'none':
             pass
         elif hitbox_type.lower() == 'image':
             if img.width and img.height != 0:
@@ -91,7 +98,7 @@ class PhysicalObject(Collidable2D):
         """
         super(PhysicalObject, self).__init__(*args, **kwargs)
 
-        self.does_update: bool = does_update
+        self.does_update: bool = does_update  # if the do_update function runs
         self.mass: float = self._base_mass * mass_mult
         self.dx: Vector2D = Vector2D()  # velocity
 
@@ -111,17 +118,18 @@ class Player(PhysicalObject):
     Has physics and collision.
     """
     # Player Class Attributes
-    _base_health: int = 100
-    _base_armor: int = 10  # this is the % dmg blocked
-    _base_speed: int = 216  # measured in pixels/second
+    _base_health: int = 100  # no units
+    _base_armor: int = 10  # this is the % dmg blocked (max 100
+    _base_speed: () = lambda: 300 / 1080 * int(
+        Settings.settings['window_resolution'].split('x')[1])  # measured in pixels/second
 
-    size_x: function = lambda: 80 / 1920 * int(Settings.settings["window_resolution"].split("x")[0])
-    size_y: function = lambda: 80 / 1080 * int(Settings.settings["window_resolution"].split("x")[1])
+    standard_width: () = lambda: 80 / 1920 * int(Settings.settings['window_resolution'].split('x')[0])
+    standard_height: () = lambda: 80 / 1080 * int(Settings.settings['window_resolution'].split('x')[1])
 
-    min_x: LambdaWrapper = LambdaWrapper(lambda: -Player.size_x())
-    min_y: LambdaWrapper = LambdaWrapper(lambda: -Player.size_y())
-    max_x: function = lambda: int(Settings.settings["window_resolution"].split("x")[0]) + Player.size_x()
-    max_y: function = lambda: int(Settings.settings["window_resolution"].split("x")[1]) + Player.size_y()
+    min_x: LambdaWrapper = LambdaWrapper(lambda: -Player.standard_width())
+    min_y: LambdaWrapper = LambdaWrapper(lambda: -Player.standard_height())
+    max_x: () = lambda: int(Settings.settings['window_resolution'].split('x')[0]) + Player.standard_width()
+    max_y: () = lambda: int(Settings.settings['window_resolution'].split('x')[1]) + Player.standard_height()
 
     def __init__(self, health_mult: float = 1, armor_mult: float = 1, speed_mult: float = 1, img: TextureRegion = None,
                  *args, **kwargs):
@@ -133,17 +141,17 @@ class Player(PhysicalObject):
             :param speed_mult: Multiplier for speed.
             :param img: Image or animation to display.
         """
-        img.width = self.size_x()
-        img.height = self.size_y()
-        img.anchor_x = img.width // 2
-        img.anchor_y = img.height // 2
+        img.width = self.standard_width()
+        img.height = self.standard_height()
+        img.anchor_x = img.width / 2
+        img.anchor_y = img.height / 2
 
-        super(Player, self).__init__(img=img, *args, **kwargs)
+        super(Player, self).__init__(img=img, scaled=False, *args, **kwargs)
 
         self.starting_health: int = int(self._base_health * health_mult)
         self._health: int = self.starting_health
         self.armor: int = int(self._base_armor * armor_mult)
-        self.speed: int = int(self._base_speed * speed_mult)
+        self.speed: int = int(self._base_speed() * speed_mult)
         self.health_label: Label = Label()
         self.health_processed: bool = True
 
@@ -184,31 +192,48 @@ class Level(object):
     Container Class for a set of Level elements.
     """
 
-    # TODO: Add spawn points and player count.
-    def __init__(self, background: Sprite = None, collidables: [Collidable2D] = None, music: media.Source = None):
+    def __init__(self, background: Sprite = None, objects: [Collidable2D] = None, music: media.Source = None,
+                 name: str = None, spawn_points: [Vector2D] = None):
         """
         Creates a new Level.
-        :param background: The Sprite that is rendered by default on the screen.
-        :param collidables: List of Collidables that are rendered over the background and calculated in collisions.
-        :param physical_objects: List of PhysicsObjects to be rendered a
+            :param background: The background Sprite.
+            :param objects: All objects in the level.
+            :param music: Sounds to be played in the background while game is running.
+            :param name: Name to be displayed for the level
+            :param spawn_points: Places for players to spawn into the level
         """
         self._batch: Batch = Batch()
         self.background: Sprite = background
-        self.collidables: [Collidable2D] = collidables
+        self.collidables: [Collidable2D] = []
         self.physical_objects: [PhysicalObject] = []
         self.players: [Player] = []
+        if objects is not None:
+            self.collidables.append(*objects)
         if music is None:
-            self.music: media.Source = resource.media("Fluffing a Duck.wav")
+            self.music: media.Source = resource.media('Fluffing a Duck.wav')
         else:
-            self.music = music
+            self.music: media.Source = music
+        if name is None:
+            self.name: str = 'Default Level'
+        else:
+            self.name: str = name
 
+        if spawn_points is not None:
+            self.spawn_points = spawn_points
+            self.max_players = len(spawn_points)
+        else:
+            self.spawn_points = [Vector2D(Settings.global_main_window.width // 5, 100),
+                                 Vector2D(Settings.global_main_window.width * 4 // 5, 100)]
+            self.max_players = 2
+
+        # ADDING BATCHES AND SORTING OBJECTS #
         background.batch = self._batch
-        for collidable in collidables:
-            collidable.batch = self._batch
-            if isinstance(collidable, PhysicalObject):
-                self.physical_objects.append(collidable)
-                if isinstance(collidable, Player):
-                    self.players.append(collidable)
+        for obj in objects:
+            obj.batch = self._batch
+            if isinstance(obj, PhysicalObject):
+                self.physical_objects.append(obj)
+                if isinstance(obj, Player):
+                    self.players.append(obj)
 
     def add(self, sprite: Sprite):
         """
@@ -244,8 +269,9 @@ class Level(object):
                     self.players.remove(sprite)
             sprite.delete()
         elif isinstance(sprite, Sprite):
-            self.background = None
-            sprite.delete()
+            if sprite is self.background:
+                self.background = None
+                sprite.delete()
         else:
             return NotImplemented
 
@@ -253,10 +279,32 @@ class Level(object):
         self._batch.draw()
 
     # TODO: Write level's do_update()
-    def do_update(self):
-        pass
+    def do_update(self, dt):
+        for obj in self.physical_objects:
+            collides = False
+            for col_obj in self.collidables:
+                if obj.is_colliding(col_obj):
+                    collides = True
+            if not collides:
+                obj.do_update(dt=dt)
 
 
-# TODO: Write BlockPlace
 class BlockPlace(Level):
-    pass
+
+    def __init__(self):
+        main_platforms: [Collidable2D] = [Collidable2D(hitbox_type='image', img=resource.image('default_platform.png'),
+                                                       x=Settings.global_main_window.width // 2,
+                                                       y=Settings.global_main_window.height // 3)]
+        spawn_points = []
+        for main_platform in main_platforms:
+            main_platform.anchor_x = main_platform.width / 2
+            main_platform.anchor_y = main_platform.height / 2
+            spawn_points.append(Vector2D(
+                main_platform.x - (main_platform.width / 2 - Player.standard_width() / 2),
+                main_platform.y + main_platform.height / 2 + Player.standard_height() / 2))
+            spawn_points.append(
+                Vector2D(main_platform.x + (main_platform.width / 2 - Player.standard_width() / 2),
+                         main_platform.y + main_platform.height / 2 + Player.standard_height() / 2))
+
+        super(BlockPlace, self).__init__(objects=main_platforms, name="Block Place",
+                                         music=resource.media("Fluffing a Duck.wav"), spawn_points=spawn_points)
