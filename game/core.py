@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import pyglet
-from pyglet import clock, media
+from pyglet import clock
 from pyglet import resource
 from pyglet.graphics import Batch
 from pyglet.text import Label
-from pyglet.window import Window
-from pyglet.window import key
+from pyglet.window import Window, key
 
-from game.level import Level, Player
+from game.level import Level, BlockPlace, Player
 from game.settings import Settings
 from game.utility import Vector2D
 
@@ -52,35 +51,39 @@ def main():
     """
 
     Settings.init()
-    game(window=Settings.global_main_window)
+    level = BlockPlace()
+    players = []
+    for num in range(2):
+        players.append(
+            Player(img=resource.image(f'p_{num + 1}.png'), x=level.spawn_points[num].x, y=level.spawn_points[num].y))
+    game(window=Settings.global_main_window, level=level, players=players)
 
 
-def game(window: Window, level: Level = None):
+def game(window: Window, level: Level = None, players: [Player] = None):
     """
     Function to run the game in a given window with given parameters.
 
     key_handler is for compatibility purposes
         :param window: The window for all graphics to be drawn on.
         :param level: The game level
+        :param players: The players to be calculated in gameplay.
     """
 
     # GAME INSTANCE VARS
-    overlay_batch: Batch = Batch()  # The graphics batch of the game instance
+    overlay_batch: Batch = Batch()  # The graphics batch of the overlay in this game instance
     key_handler: {bool} = KeyStateHandler()  # The key listener equivalent for this game
     window.push_handlers(key_handler)  # Tell it which window to listen to
     if level is None:
         level: Level = Level()  # Default level
-    bg_music: media.Source = level.music  # Background music
     other_labels: [Label] = [
         Label(level.name, font_name='Helvecta', font_size=35, bold=True, anchor_y='top', anchor_x='center',
-              x=window.width / 2, y=window.height, batch=overlay_batch, )]
+              x=window.width / 2, y=window.height, batch=overlay_batch, )]  # name of the level
 
     # -------------- SETUP -------------- #
 
-    # creating player(s)
-    for num in range(level.max_players):
-        level.add(
-            Player(img=resource.image(f'p_{num + 1}.png'), x=level.spawn_points[num].x, y=level.spawn_points[num].y))
+    if players is not None:
+        for player in players:
+            level.add(player)
 
     # loading of all health text to display onscreen
     for i in range(len(level.players)):
@@ -93,10 +96,6 @@ def game(window: Window, level: Level = None):
             temp_label.y = window.height - (temp_label.content_height * (i // 2))
         temp_label.text = str(level.players[i].starting_health)
         level.players[i].health_label = temp_label
-
-    # play music
-    if bg_music is not None:
-        bg_music.play()
 
     # ----------------------------------- #
 
@@ -149,14 +148,16 @@ def game(window: Window, level: Level = None):
         for k in range(len(level.players)):
             controlled_player = level.players[k]
             if key_handler[Settings.settings[f'move_right_{k + 1}']]:
-                if controlled_player.dx.x > -controlled_player.speed:
-                    controlled_player.apply_force(Vector2D(-controlled_player.speed, 0))
-            if key_handler[Settings.settings[f'move_left_{k + 1}']]:
                 if controlled_player.dx.x < controlled_player.speed:
                     controlled_player.apply_force(Vector2D(controlled_player.speed, 0))
+            if key_handler[Settings.settings[f'move_left_{k + 1}']]:
+                if controlled_player.dx.x > -controlled_player.speed:
+                    controlled_player.apply_force(Vector2D(-controlled_player.speed, 0))
 
     window.set_visible(True)  # make the window visible
     clock.schedule(on_update)  # calls the update function every clock tick
+    if level.music is not None:
+        level.music.play()  # background music
     pyglet.app.run()  # inits pyglet and OpenGL
 
 

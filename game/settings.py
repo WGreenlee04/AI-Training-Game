@@ -8,7 +8,7 @@ from pyglet import resource
 from pyglet.window import Window
 from screeninfo import get_monitors
 
-from game.utility import LambdaWrapper
+from game.utility import Vector2D
 
 
 class Settings:
@@ -23,9 +23,8 @@ class Settings:
     global_main_window: Window = None  # Window for the game to render on
 
     # CONSTANTS #
-    constant_g: LambdaWrapper = LambdaWrapper(
-        lambda: -80 / 1080 * 9.8 * int(
-            Settings.settings['window_resolution'].split('x')[1]))  # measured in pixels/second/second
+    constant_g: () = lambda: Vector2D(0, -80 / 1080 * 9.8 * int(
+        Settings.settings['window_resolution'].split('x')[1]))  # measured in pixels/second/second
 
     # SETTINGS VARS #
     file_path: str = str(Path('resources/config.txt').absolute())
@@ -57,7 +56,6 @@ class Settings:
 
     @staticmethod
     def init():
-
         if not exists(Settings.file_path):
             Settings.set_default()
             Settings.save_new()

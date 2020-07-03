@@ -7,7 +7,7 @@ from pyglet.sprite import Sprite
 from pyglet.text import Label
 
 from game.settings import Settings
-from game.utility import Dimension, Rectangle, Vector2D, LambdaWrapper
+from game.utility import Dimension, Rectangle, Vector2D, GeneralUtil
 
 
 class Collidable2D(Sprite):
@@ -43,9 +43,8 @@ class Collidable2D(Sprite):
         """
 
         if scaled:
-            scale_factor = 1920 * int(Settings.settings['window_resolution'].split('x')[0])
-            img.width *= scale_factor
-            img.height *= scale_factor
+            img.width *= 1920 / int(Settings.settings['window_resolution'].split('x')[0])
+            img.height *= 1080 / int(Settings.settings['window_resolution'].split('x')[1])
 
         img.anchor_x = img.width / 2
         img.anchor_y = img.height / 2
@@ -76,11 +75,13 @@ class Collidable2D(Sprite):
         if not self.does_collide or self._hitbox_type is None or self._hitbox_type.lower() == 'none':
             return False
 
-        if self.hitbox_type.lower() == 'image' or 'rectangle':
-            return False
+        return False
 
-        if self._hitbox_type.lower() == 'abstract':
-            return False
+        # if self.hitbox_type.lower() == 'image' or self.hitbox_type.lower() == 'rectangle':
+        #   return False
+
+        # if self._hitbox_type.lower() == 'abstract':
+        #   return False
 
 
 class PhysicalObject(Collidable2D):
@@ -120,14 +121,14 @@ class Player(PhysicalObject):
     # Player Class Attributes
     _base_health: int = 100  # no units
     _base_armor: int = 10  # this is the % dmg blocked (max 100
-    _base_speed: () = lambda: 300 / 1080 * int(
+    _base_speed: () = lambda: 600 / 1080 * int(
         Settings.settings['window_resolution'].split('x')[1])  # measured in pixels/second
 
     standard_width: () = lambda: 80 / 1920 * int(Settings.settings['window_resolution'].split('x')[0])
     standard_height: () = lambda: 80 / 1080 * int(Settings.settings['window_resolution'].split('x')[1])
 
-    min_x: LambdaWrapper = LambdaWrapper(lambda: -Player.standard_width())
-    min_y: LambdaWrapper = LambdaWrapper(lambda: -Player.standard_height())
+    min_x: () = lambda: -Player.standard_width()
+    min_y: () = lambda: -Player.standard_height()
     max_x: () = lambda: int(Settings.settings['window_resolution'].split('x')[0]) + Player.standard_width()
     max_y: () = lambda: int(Settings.settings['window_resolution'].split('x')[1]) + Player.standard_height()
 
@@ -141,8 +142,8 @@ class Player(PhysicalObject):
             :param speed_mult: Multiplier for speed.
             :param img: Image or animation to display.
         """
-        img.width = self.standard_width()
-        img.height = self.standard_height()
+        img.width = Player.standard_width()
+        img.height = Player.standard_height()
         img.anchor_x = img.width / 2
         img.anchor_y = img.height / 2
 
@@ -151,7 +152,7 @@ class Player(PhysicalObject):
         self.starting_health: int = int(self._base_health * health_mult)
         self._health: int = self.starting_health
         self.armor: int = int(self._base_armor * armor_mult)
-        self.speed: int = int(self._base_speed() * speed_mult)
+        self.speed: int = int(Player._base_speed() * speed_mult)
         self.health_label: Label = Label()
         self.health_processed: bool = True
 
@@ -179,12 +180,12 @@ class Player(PhysicalObject):
             self.health_processed = True
 
     def check_bounds(self):
-        if self.x <= self.min_x():
-            self.x = self.max_x()
-        if self.x >= self.max_x():
-            self.x = self.min_x()
-        if self.y <= self.min_y():
-            self.y = self.max_x()
+        if self.x < Player.min_x():
+            self.x = Player.max_x()
+        if self.x > Player.max_x():
+            self.x = Player.min_x()
+        if self.y < Player.min_y():
+            self.y = Player.max_y()
 
 
 class Level(object):
@@ -227,13 +228,15 @@ class Level(object):
             self.max_players = 2
 
         # ADDING BATCHES AND SORTING OBJECTS #
-        background.batch = self._batch
-        for obj in objects:
-            obj.batch = self._batch
-            if isinstance(obj, PhysicalObject):
-                self.physical_objects.append(obj)
-                if isinstance(obj, Player):
-                    self.players.append(obj)
+        if background is not None:
+            background.batch = self._batch
+        if objects is not None:
+            for obj in objects:
+                obj.batch = self._batch
+                if isinstance(obj, PhysicalObject):
+                    self.physical_objects.append(obj)
+                    if isinstance(obj, Player):
+                        self.players.append(obj)
 
     def add(self, sprite: Sprite):
         """
@@ -278,9 +281,9 @@ class Level(object):
     def draw(self):
         self._batch.draw()
 
-    # TODO: Write level's do_update()
     def do_update(self, dt):
         for obj in self.physical_objects:
+            obj.apply_force(Settings.constant_g() * dt)
             collides = False
             for col_obj in self.collidables:
                 if obj.is_colliding(col_obj):
@@ -292,7 +295,8 @@ class Level(object):
 class BlockPlace(Level):
 
     def __init__(self):
-        main_platforms: [Collidable2D] = [Collidable2D(hitbox_type='image', img=resource.image('default_platform.png'),
+        main_platforms: [Collidable2D] = [Collidable2D(hitbox_type='image', img=GeneralUtil.loadResizedImage(
+            resource.image('default_platform.png'), 1400, 400),
                                                        x=Settings.global_main_window.width // 2,
                                                        y=Settings.global_main_window.height // 3)]
         spawn_points = []

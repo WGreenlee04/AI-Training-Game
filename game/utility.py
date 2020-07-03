@@ -13,6 +13,20 @@ from collections import namedtuple
 from math import *
 from random import *
 
+from pyglet.image import TextureRegion
+
+
+class GeneralUtil:
+
+    @staticmethod
+    def loadResizedImage(img: TextureRegion, width: int = None, height: int = None) -> TextureRegion:
+        if width is not None:
+            img.width = width
+        if height is not None:
+            img.height = height
+
+        return img
+
 
 class Vector2D(object):
     """
