@@ -65,6 +65,21 @@ class Collidable2D(Sprite):
         elif hitbox_type.lower() == 'abstract':
             self._hitbox = hitbox_coordinates
 
+    @property
+    def absolute_coordinates(self):
+        """
+        Returns the absolute coordinates of the hitbox shape
+        :return:
+        """
+        if self._hitbox_type is not None and self._hitbox_type.lower != "none" or "circle":
+            coordinates = []
+            for coordinate in self._hitbox.coordinates:
+                abs_coord = Vector2D
+                abs_coord.x = coordinate.x + self.x
+                abs_coord.y = coordinate.x + self.y
+                coordinates.append(coordinate)
+            return coordinates
+
     def is_colliding(self, other: Collidable2D) -> bool:
         """
         Checks if the hitboxes of this object and another are overlapping.
@@ -138,20 +153,18 @@ class Player(PhysicalObject):
         Creates a new Player object.
 
             :param health_mult: Multiplier for health.
-            :param armor_mult: Multiplier for armor.
+            :param armor_mult: Multiplier for _armor.
             :param speed_mult: Multiplier for speed.
             :param img: Image or animation to display.
         """
         img.width = Player.standard_width()
         img.height = Player.standard_height()
-        img.anchor_x = img.width / 2
-        img.anchor_y = img.height / 2
 
         super(Player, self).__init__(img=img, scaled=False, *args, **kwargs)
 
         self.starting_health: int = int(self._base_health * health_mult)
         self._health: int = self.starting_health
-        self.armor: int = int(self._base_armor * armor_mult)
+        self._armor: int = int(self._base_armor * armor_mult)
         self.speed: int = int(Player._base_speed() * speed_mult)
         self.health_label: Label = Label()
         self.health_processed: bool = True
@@ -163,12 +176,13 @@ class Player(PhysicalObject):
     @health.setter
     def health(self, health: int):
         """
-        Uses armor to properly calculate health changes.
-        :param health: Amount of health to change by.
+        Uses _armor to properly calculate health changes.
+        :param health: New amount of health.
         """
-        if health <= 0:
-            health *= (1 - self.armor)
-        self._health += int(health)
+        health_diff = health - self._health
+        if health_diff < 0:
+            health_diff *= self._armor
+        self._health += health_diff
         self.health_processed = False
 
     def do_update(self, dt):
@@ -295,7 +309,7 @@ class Level(object):
 class BlockPlace(Level):
 
     def __init__(self):
-        main_platforms: [Collidable2D] = [Collidable2D(hitbox_type='image', img=GeneralUtil.loadResizedImage(
+        main_platforms: [Collidable2D] = [Collidable2D(hitbox_type='image', img=GeneralUtil.load_resized_image(
             resource.image('default_platform.png'), 1400, 400),
                                                        x=Settings.global_main_window.width // 2,
                                                        y=Settings.global_main_window.height // 3)]

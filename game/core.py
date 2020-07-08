@@ -56,10 +56,10 @@ def main():
     for num in range(2):
         players.append(
             Player(img=resource.image(f'p_{num + 1}.png'), x=level.spawn_points[num].x, y=level.spawn_points[num].y))
-    game(window=Settings.global_main_window, level=level, players=players)
+    game_local(window=Settings.global_main_window, level=level, players=players)
 
 
-def game(window: Window, level: Level = None, players: [Player] = None):
+def game_local(window: Window, level: Level = None, players: [Player] = None):
     """
     Function to run the game in a given window with given parameters.
 

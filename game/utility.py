@@ -19,7 +19,7 @@ from pyglet.image import TextureRegion
 class GeneralUtil:
 
     @staticmethod
-    def loadResizedImage(img: TextureRegion, width: int = None, height: int = None) -> TextureRegion:
+    def load_resized_image(img: TextureRegion, width: int = None, height: int = None) -> TextureRegion:
         if width is not None:
             img.width = width
         if height is not None:
@@ -372,8 +372,8 @@ class Rectangle(Dimension):
         Sets the coordinates of the top left and bottom right of the rectangle.
             :param coordinates: Coordinates in the form Coordinates(tl: Point(x,y), br: Point(x,y))
         """
-        self.width = abs(coordinates[0][0]) + abs(coordinates[1][0])
-        self.height = abs(coordinates[0][1]) + abs(coordinates[1][1])
+        self.width = abs(coordinates.tl.x) + abs(coordinates.br.x)
+        self.height = abs(coordinates.tl.y) + abs(coordinates.br.y)
 
 
 class LambdaWrapper(object):
